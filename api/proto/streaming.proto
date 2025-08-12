@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package streaming;
+
+option go_package = "streaming-engine/api/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// StreamingService provides the gRPC management API
+service StreamingService {
+    // Topic management
+    rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse);
+    rpc DeleteTopic(DeleteTopicRequest) returns (DeleteTopicResponse);
+    rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse);
+    rpc GetTopicMetadata(GetTopicMetadataRequest) returns (GetTopicMetadataResponse);
+    
+    // Cluster management
+    rpc GetClusterInfo(google.protobuf.Empty) returns (ClusterInfoResponse);
+    rpc GetBrokerInfo(GetBrokerInfoRequest) returns (GetBrokerInfoResponse);
+    
+    // Consumer group management
+    rpc ListConsumerGroups(ListConsumerGroupsRequest) returns (ListConsumerGroupsResponse);
+    rpc GetConsumerGroupInfo(GetConsumerGroupInfoRequest) returns (GetConsumerGroupInfoResponse);
+    rpc ResetConsumerGroupOffsets(ResetConsumerGroupOffsetsRequest) returns (ResetConsumerGroupOffsetsResponse);
+    
+    // Metrics and monitoring
+    rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+    rpc GetHealth(google.protobuf.Empty) returns (HealthResponse);
+    
+    // Stream processing
+    rpc CreateStream(CreateStreamRequest) returns (CreateStreamResponse);
+    rpc DeleteStream(DeleteStreamRequest) returns (DeleteStreamResponse);
+    rpc ListStreams(ListStreamsRequest) returns (ListStreamsResponse);
+}
+
+// Message represents a single message
+message Message {
+    bytes key = 1;
+    bytes value = 2;
+    map<string, string> headers = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    int64 offset = 5;
+    int32 partition = 6;
+    string topic = 7;
+    uint32 crc32 = 8;
+}
+
+// TopicConfig represents topic configuration
+message TopicConfig {
+    string name = 1;
+    int32 partitions = 2;
+    int32 replication_factor = 3;
+    int64 retention_time_ms = 4;
+    int64 retention_size = 5;
+    string compaction_policy = 6;
+    string compression_type = 7;
+    int32 max_message_size = 8;
+    map<string, string> config = 9;
+}
+
+// BrokerInfo represents broker information
+message BrokerInfo {
+    string node_id = 1;
+    string host = 2;
+    int32 port = 3;
+    string rack = 4;
+    google.protobuf.Timestamp timestamp = 5;
+    map<string, string> metadata = 6;
+}
+
+// PartitionInfo represents partition information
+message PartitionInfo {
+    string topic = 1;
+    int32 partition = 2;
+    string leader = 3;
+    repeated string replicas = 4;
+    repeated string isr = 5;
+    int64 offset = 6;
+    int64 size = 7;
+    google.protobuf.Timestamp last_updated = 8;
+}
+
+// ConsumerGroupInfo represents consumer group information
+message ConsumerGroupInfo {
+    string group_id = 1;
+    repeated ConsumerMemberInfo members = 2;
+    string coordinator = 3;
+    string state = 4;
+    map<string, TopicOffsets> offsets = 5;
+    map<string, PartitionAssignments> assignment = 6;
+}
+
+// ConsumerMemberInfo represents individual consumer information
+message ConsumerMemberInfo {
+    string member_id = 1;
+    string client_id = 2;
+    string host = 3;
+    int64 session_timeout_ms = 4;
+    map<string, string> metadata = 5;
+    google.protobuf.Timestamp last_heartbeat = 6;
+}
+
+// TopicOffsets represents offsets for a topic
+message TopicOffsets {
+    map<int32, int64> partition_offsets = 1;
+}
+
+// PartitionAssignments represents partition assignments
+message PartitionAssignments {
+    repeated PartitionAssignment assignments = 1;
+}
+
+// PartitionAssignment represents a single partition assignment
+message PartitionAssignment {
+    string topic = 1;
+    int32 partition = 2;
+}
+
+// StreamConfig represents stream processing configuration
+message StreamConfig {
+    string name = 1;
+    string query = 2;
+    repeated string source_topics = 3;
+    string sink_topic = 4;
+    int64 window_size_ms = 5;
+    string window_type = 6;
+    map<string, string> config = 7;
+}
+
+// Topic management requests/responses
+message CreateTopicRequest {
+    TopicConfig config = 1;
+    bool validate_only = 2;
+    int32 timeout_ms = 3;
+}
+
+message CreateTopicResponse {
+    bool success = 1;
+    string error_message = 2;
+    int32 error_code = 3;
+}
+
+message DeleteTopicRequest {
+    string topic_name = 1;
+    int32 timeout_ms = 2;
+}
+
+message DeleteTopicResponse {
+    bool success = 1;
+    string error_message = 2;
+    int32 error_code = 3;
+}
+
+message ListTopicsRequest {
+    bool include_internal = 1;
+}
+
+message ListTopicsResponse {
+    repeated string topic_names = 1;
+    repeated TopicConfig topic_configs = 2;
+}
+
+message GetTopicMetadataRequest {
+    string topic_name = 1;
+}
+
+message GetTopicMetadataResponse {
+    TopicConfig config = 1;
+    repeated PartitionInfo partitions = 2;
+}
+
+// Cluster management requests/responses
+message ClusterInfoResponse {
+    string cluster_id = 1;
+    repeated BrokerInfo brokers = 2;
+    string leader = 3;
+    string version = 4;
+    google.protobuf.Timestamp timestamp = 5;
+}
+
+message GetBrokerInfoRequest {
+    string node_id = 1;
+}
+
+message GetBrokerInfoResponse {
+    BrokerInfo broker = 1;
+}
+
+// Consumer group management requests/responses
+message ListConsumerGroupsRequest {
+    bool include_empty = 1;
+}
+
+message ListConsumerGroupsResponse {
+    repeated string group_ids = 1;
+    repeated ConsumerGroupInfo groups = 2;
+}
+
+message GetConsumerGroupInfoRequest {
+    string group_id = 1;
+}
+
+message GetConsumerGroupInfoResponse {
+    ConsumerGroupInfo group = 1;
+}
+
+message ResetConsumerGroupOffsetsRequest {
+    string group_id = 1;
+    string topic = 2;
+    map<int32, int64> partition_offsets = 3;
+    bool dry_run = 4;
+}
+
+message ResetConsumerGroupOffsetsResponse {
+    bool success = 1;
+    map<int32, int64> updated_offsets = 2;
+    string error_message = 3;
+}
+
+// Metrics and monitoring requests/responses
+message GetMetricsRequest {
+    repeated string metric_names = 1;
+    map<string, string> labels = 2;
+}
+
+message GetMetricsResponse {
+    repeated Metric metrics = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message Metric {
+    string name = 1;
+    string type = 2;
+    double value = 3;
+    map<string, string> labels = 4;
+    google.protobuf.Timestamp timestamp = 5;
+    string help = 6;
+}
+
+message HealthResponse {
+    bool healthy = 1;
+    string status = 2;
+    map<string, string> checks = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}
+
+// Stream processing requests/responses
+message CreateStreamRequest {
+    StreamConfig config = 1;
+    bool start_immediately = 2;
+}
+
+message CreateStreamResponse {
+    bool success = 1;
+    string stream_id = 2;
+    string error_message = 3;
+}
+
+message DeleteStreamRequest {
+    string stream_id = 1;
+}
+
+message DeleteStreamResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message ListStreamsRequest {
+    bool include_stopped = 1;
+}
+
+message ListStreamsResponse {
+    repeated StreamInfo streams = 1;
+}
+
+message StreamInfo {
+    string stream_id = 1;
+    StreamConfig config = 2;
+    string state = 3;
+    google.protobuf.Timestamp created_at = 4;
+    google.protobuf.Timestamp last_updated = 5;
+    map<string, string> metrics = 6;
+}

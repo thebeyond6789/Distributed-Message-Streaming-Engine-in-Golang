@@ -676,3 +676,4 @@ func (sp *StreamProducer) Send(record *StreamRecord) error {
 func (sp *StreamProducer) Close() error {
 	return nil
 }
+
